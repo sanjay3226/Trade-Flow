@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="blue">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TradeFlow Pro | Trading Journal</title>
+    <meta name="description" content="Professional trading journal for tracking, analyzing, and improving your trades.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ============== ONBOARDING ============== -->
+    <div id="onboarding" class="overlay">
+        <div class="onboard-card">
+            <div class="onboard-icon"><i class="fas fa-bolt"></i></div>
+            <h1>Welcome to <span class="accent">TradeFlow</span> Pro</h1>
+            <p>Set up your journal in 10 seconds.</p>
+            <div class="onboard-form">
+                <div class="field">
+                    <label>Base Currency</label>
+                    <select id="ob_currency">
+                        <option value="USD">USD — US Dollar ($)</option>
+                        <option value="EUR">EUR — Euro (€)</option>
+                        <option value="GBP">GBP — British Pound (£)</option>
+                        <option value="INR">INR — Indian Rupee (₹)</option>
+                        <option value="JPY">JPY — Japanese Yen (¥)</option>
+                        <option value="AUD">AUD — Australian Dollar (A$)</option>
+                        <option value="CAD">CAD — Canadian Dollar (C$)</option>
+                        <option value="CHF">CHF — Swiss Franc (Fr)</option>
+                        <option value="CNY">CNY — Chinese Yuan (¥)</option>
+                        <option value="NZD">NZD — New Zealand Dollar (NZ$)</option>
+                        <option value="ZAR">ZAR — South African Rand (R)</option>
+                        <option value="SGD">SGD — Singapore Dollar (S$)</option>
+                        <option value="HKD">HKD — Hong Kong Dollar (HK$)</option>
+                        <option value="KRW">KRW — South Korean Won (₩)</option>
+                        <option value="BRL">BRL — Brazilian Real (R$)</option>
+                        <option value="MXN">MXN — Mexican Peso (Mex$)</option>
+                        <option value="AED">AED — UAE Dirham (د.إ)</option>
+                        <option value="THB">THB — Thai Baht (฿)</option>
+                        <option value="TRY">TRY — Turkish Lira (₺)</option>
+                        <option value="PLN">PLN — Polish Zloty (zł)</option>
+                        <option value="BTC">BTC — Bitcoin (₿)</option>
+                        <option value="ETH">ETH — Ethereum (Ξ)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Starting Balance</label>
+                    <input type="number" id="ob_balance" value="10000" min="0">
+                </div>
+            </div>
+            <button id="ob_start" class="btn btn-primary btn-block btn-lg">Launch Journal <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </div>
+
+    <!-- ============== SETTINGS MODAL ============== -->
+    <div id="settingsModal" class="overlay" style="display:none">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+                <button class="btn-x" id="closeSettings">&times;</button>
+            </div>
+            <div class="settings-body">
+                <div class="settings-section">
+                    <h3>Account</h3>
+                    <div class="field">
+                        <label>Base Currency</label>
+                        <select id="set_currency">
+                            <option value="USD">USD ($)</option><option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option><option value="INR">INR (₹)</option>
+                            <option value="JPY">JPY (¥)</option><option value="AUD">AUD (A$)</option>
+                            <option value="CAD">CAD (C$)</option><option value="CHF">CHF (Fr)</option>
+                            <option value="CNY">CNY (¥)</option><option value="NZD">NZD (NZ$)</option>
+                            <option value="ZAR">ZAR (R)</option><option value="SGD">SGD (S$)</option>
+                            <option value="HKD">HKD (HK$)</option><option value="KRW">KRW (₩)</option>
+                            <option value="BRL">BRL (R$)</option><option value="MXN">MXN (Mex$)</option>
+                            <option value="AED">AED (د.إ)</option><option value="THB">THB (฿)</option>
+                            <option value="TRY">TRY (₺)</option><option value="PLN">PLN (zł)</option>
+                            <option value="BTC">BTC (₿)</option><option value="ETH">ETH (Ξ)</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Starting Balance</label>
+                        <input type="number" id="set_balance" min="0">
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>Appearance</h3>
+                    <div class="field"><label>Theme</label>
+                        <div class="theme-toggle-row">
+                            <button class="theme-btn" data-theme="dark"><i class="fas fa-moon"></i> Dark</button>
+                            <button class="theme-btn" data-theme="light"><i class="fas fa-sun"></i> Light</button>
+                        </div>
+                    </div>
+                    <div class="field"><label>Accent Color</label>
+                        <div class="accent-picker">
+                            <button class="accent-dot" data-accent="blue" style="--dot:#3b82f6" title="Blue"></button>
+                            <button class="accent-dot" data-accent="emerald" style="--dot:#10b981" title="Emerald"></button>
+                            <button class="accent-dot" data-accent="violet" style="--dot:#8b5cf6" title="Violet"></button>
+                            <button class="accent-dot" data-accent="rose" style="--dot:#f43f5e" title="Rose"></button>
+                            <button class="accent-dot" data-accent="amber" style="--dot:#f59e0b" title="Amber"></button>
+                            <button class="accent-dot" data-accent="cyan" style="--dot:#06b6d4" title="Cyan"></button>
+                            <button class="accent-dot" data-accent="orange" style="--dot:#f97316" title="Orange"></button>
+                            <button class="accent-dot" data-accent="teal" style="--dot:#14b8a6" title="Teal"></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>Sounds</h3>
+                    <div class="field">
+                        <label class="toggle-row"><input type="checkbox" id="set_sound" checked> <span>Enable sound effects</span></label>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>Keyboard Shortcuts</h3>
+                    <div class="shortcut-list">
+                        <div><kbd>1</kbd> Dashboard</div>
+                        <div><kbd>2</kbd> Log Trade</div>
+                        <div><kbd>3</kbd> History</div>
+                        <div><kbd>4</kbd> Analytics</div>
+                        <div><kbd>5</kbd> Calendar</div>
+                        <div><kbd>S</kbd> Settings</div>
+                        <div><kbd>E</kbd> Export</div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>Data</h3>
+                    <div class="field">
+                        <button id="clearAllData" class="btn btn-danger btn-block"><i class="fas fa-trash"></i> Clear All Trades</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============== EXPORT MODAL ============== -->
+    <div id="exportModal" class="overlay" style="display:none">
+        <div class="modal-box small">
+            <div class="modal-header">
+                <h2><i class="fas fa-download"></i> Export Report</h2>
+                <button class="btn-x" id="closeExport">&times;</button>
+            </div>
+            <p class="modal-desc">Choose your export format:</p>
+            <div class="export-btns">
+                <button class="btn btn-primary" id="exportPDF"><i class="fas fa-file-pdf"></i> PDF Report</button>
+                <button class="btn btn-outline" id="exportCSV"><i class="fas fa-file-csv"></i> CSV Spreadsheet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============== CONFETTI CANVAS ============== -->
+    <canvas id="confetti" class="confetti-canvas"></canvas>
+
+    <!-- ============== APP ============== -->
+    <div id="app" style="display:none">
+
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-brand"><i class="fas fa-bolt"></i> TradeFlow<span class="accent">Pro</span></div>
+            <div class="topbar-right">
+                <div class="balance-pill" id="balancePill" title="Account Balance"></div>
+                <button id="exportBtn" class="btn btn-outline btn-sm"><i class="fas fa-download"></i><span class="hide-mobile"> Export</span></button>
+                <button id="settingsBtn" class="btn btn-icon"><i class="fas fa-cog"></i></button>
+            </div>
+        </header>
+
+        <!-- Views -->
+        <div id="viewContainer">
+
+            <!-- ===== DASHBOARD ===== -->
+            <div id="v_dashboard" class="view active">
+                <!-- Streak Banner -->
+                <div id="streakBanner" class="streak-banner" style="display:none"></div>
+
+                <!-- Primary Stats -->
+                <div class="stats-row">
+                    <div class="stat"><span class="stat-lbl">Total Trades</span><span class="stat-val" id="s_total">0</span></div>
+                    <div class="stat"><span class="stat-lbl">Win Rate</span><span class="stat-val" id="s_winrate">0%</span></div>
+                    <div class="stat"><span class="stat-lbl">Net P&L</span><span class="stat-val" id="s_pnl">$0</span></div>
+                    <div class="stat"><span class="stat-lbl">Avg R:R</span><span class="stat-val" id="s_rr">0</span></div>
+                </div>
+
+                <!-- Advanced Stats -->
+                <div class="stats-row secondary">
+                    <div class="stat sm"><span class="stat-lbl">Profit Factor</span><span class="stat-val" id="s_pf">—</span></div>
+                    <div class="stat sm"><span class="stat-lbl">Max Drawdown</span><span class="stat-val" id="s_dd">—</span></div>
+                    <div class="stat sm"><span class="stat-lbl">Best Trade</span><span class="stat-val text-green" id="s_best">—</span></div>
+                    <div class="stat sm"><span class="stat-lbl">Worst Trade</span><span class="stat-val text-red" id="s_worst">—</span></div>
+                    <div class="stat sm"><span class="stat-lbl">Avg Win</span><span class="stat-val text-green" id="s_avgw">—</span></div>
+                    <div class="stat sm"><span class="stat-lbl">Avg Loss</span><span class="stat-val text-red" id="s_avgl">—</span></div>
+                </div>
+
+                <!-- Charts -->
+                <div class="cards-grid">
+                    <div class="card wide glass"><h3><i class="fas fa-wave-square"></i> Equity Curve</h3><div class="chart-box"><canvas id="cEquity"></canvas></div></div>
+                    <div class="card glass"><h3><i class="fas fa-chart-pie"></i> Win / Loss</h3><div class="chart-box sq"><canvas id="cWL"></canvas></div></div>
+                    <div class="card glass"><h3><i class="fas fa-crosshairs"></i> By Strategy</h3><div class="chart-box"><canvas id="cStrat"></canvas></div></div>
+                    <div class="card glass"><h3><i class="fas fa-triangle-exclamation"></i> Mistakes</h3><div class="chart-box"><canvas id="cMistakes"></canvas></div></div>
+                </div>
+
+                <!-- Recent Trades -->
+                <div class="card" style="margin-top:1.5rem">
+                    <h3><i class="fas fa-clock"></i> Recent Trades</h3>
+                    <div class="table-wrap"><table>
+                        <thead><tr><th>Date</th><th>Asset</th><th>Side</th><th>P&L</th><th>R:R</th></tr></thead>
+                        <tbody id="recentBody"></tbody>
+                    </table></div>
+                    <div id="recentEmpty" class="empty sm"><i class="fas fa-inbox"></i><p>No trades yet. Log your first trade!</p></div>
+                </div>
+            </div>
+
+            <!-- ===== LOG TRADE ===== -->
+            <div id="v_add" class="view">
+                <div class="form-wrap">
+                    <div class="card">
+                        <h2><i class="fas fa-pen-to-square"></i> Log Trade</h2>
+                        <form id="tradeForm">
+                            <div class="form-label">Context</div>
+                            <div class="row-2">
+                                <div class="field"><label>Date</label><input type="datetime-local" id="f_date" required></div>
+                                <div class="field"><label>Asset / Pair</label><input type="text" id="f_asset" placeholder="BTCUSDT" required></div>
+                            </div>
+                            <div class="row-3">
+                                <div class="field"><label>Side</label>
+                                    <select id="f_type"><option value="Buy">Buy / Long</option><option value="Sell">Sell / Short</option></select>
+                                </div>
+                                <div class="field"><label>Timeframe</label>
+                                    <select id="f_tf"><option>1m</option><option>5m</option><option>15m</option><option selected>1h</option><option>4h</option><option>1D</option><option>1W</option></select>
+                                </div>
+                                <div class="field"><label>Strategy</label>
+                                    <select id="f_strat"><option>Breakout</option><option>Trend Continuation</option><option>S/R Bounce</option><option>Scalp</option><option>Mean Reversion</option><option>Gap Fill</option><option>News Trade</option><option>Other</option></select>
+                                </div>
+                            </div>
+
+                            <div class="form-label">Execution</div>
+                            <div class="row-3">
+                                <div class="field"><label>Entry Price</label><input type="number" id="f_entry" step="any" required></div>
+                                <div class="field"><label>Stop Loss</label><input type="number" id="f_sl" step="any"></div>
+                                <div class="field"><label>Take Profit</label><input type="number" id="f_tp" step="any"></div>
+                            </div>
+                            <div class="row-3">
+                                <div class="field"><label>Exit Price</label><input type="number" id="f_exit" step="any" required></div>
+                                <div class="field"><label>Position Size</label><input type="number" id="f_size" step="any" required></div>
+                                <div class="field"><label>Risk %</label><input type="number" id="f_risk" step="0.1" value="1"></div>
+                            </div>
+
+                            <div class="live-calc" id="liveCalc">
+                                <div><span>P&L</span><strong id="lc_pnl">—</strong></div>
+                                <div><span>R:R</span><strong id="lc_rr">—</strong></div>
+                                <div><span>Result</span><strong id="lc_res">—</strong></div>
+                            </div>
+
+                            <div class="form-label">Emotion & Confidence</div>
+                            <div class="row-2">
+                                <div class="field"><label>Emotion Before Trade</label>
+                                    <select id="f_emotion"><option value="">— Select —</option><option>Calm</option><option>Confident</option><option>Anxious</option><option>Greedy</option><option>Fearful</option><option>Frustrated</option><option>Excited</option><option>Bored</option></select>
+                                </div>
+                                <div class="field"><label>Confidence (1–10)</label>
+                                    <input type="range" id="f_confidence" min="1" max="10" value="5" class="range-input">
+                                    <div class="range-val" id="f_conf_val">5</div>
+                                </div>
+                            </div>
+
+                            <div class="form-label">Tags</div>
+                            <div class="tags">
+                                <label class="chip"><input type="checkbox" value="A+ Setup"><span>⭐ A+ Setup</span></label>
+                                <label class="chip"><input type="checkbox" value="FOMO"><span>😰 FOMO</span></label>
+                                <label class="chip"><input type="checkbox" value="Revenge Trade"><span>😤 Revenge</span></label>
+                                <label class="chip"><input type="checkbox" value="Overtrading"><span>📊 Overtrading</span></label>
+                                <label class="chip"><input type="checkbox" value="Early Exit"><span>🚪 Early Exit</span></label>
+                                <label class="chip"><input type="checkbox" value="Late Entry"><span>⏰ Late Entry</span></label>
+                                <label class="chip"><input type="checkbox" value="News Trade"><span>📰 News</span></label>
+                                <label class="chip"><input type="checkbox" value="Experiment"><span>🧪 Experiment</span></label>
+                            </div>
+
+                            <div class="field"><label>Notes</label>
+                                <textarea id="f_notes" rows="3" placeholder="Describe your reasoning, market conditions, emotions..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block btn-lg"><i class="fas fa-check"></i> Log Trade</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== HISTORY ===== -->
+            <div id="v_history" class="view">
+                <div class="card">
+                    <div class="hist-toolbar">
+                        <div class="search-box"><i class="fas fa-search"></i><input type="text" id="histSearch" placeholder="Search..."></div>
+                        <select id="histFilter"><option value="all">All</option><option value="Win">Wins</option><option value="Loss">Losses</option></select>
+                        <select id="histSort">
+                            <option value="date-desc">Newest</option><option value="date-asc">Oldest</option>
+                            <option value="pnl-desc">Best P&L</option><option value="pnl-asc">Worst P&L</option>
+                        </select>
+                    </div>
+                    <div class="table-wrap"><table>
+                        <thead><tr><th>Date</th><th>Asset</th><th>Side</th><th>Entry</th><th>Exit</th><th>P&L</th><th>R:R</th><th>Strategy</th><th>Tags</th><th></th></tr></thead>
+                        <tbody id="histBody"></tbody>
+                    </table></div>
+                    <div id="histEmpty" class="empty"><i class="fas fa-inbox"></i><p>No trades yet.</p></div>
+                </div>
+            </div>
+
+            <!-- ===== ANALYTICS ===== -->
+            <div id="v_analytics" class="view">
+                <h2 class="sec-title"><i class="fas fa-crosshairs"></i> Strategy Breakdown</h2>
+                <div id="stratCards" class="mini-grid"></div>
+                <h2 class="sec-title"><i class="fas fa-triangle-exclamation"></i> Mistake Impact</h2>
+                <div id="mistakeCards" class="mini-grid"></div>
+                <h2 class="sec-title"><i class="fas fa-brain"></i> Emotion Analysis</h2>
+                <div id="emotionCards" class="mini-grid"></div>
+            </div>
+
+            <!-- ===== CALENDAR ===== -->
+            <div id="v_calendar" class="view">
+                <div class="cal-header">
+                    <button class="btn btn-icon" id="calPrev"><i class="fas fa-chevron-left"></i></button>
+                    <h2 id="calTitle"></h2>
+                    <button class="btn btn-icon" id="calNext"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="cal-grid">
+                    <div class="cal-day-lbl">Mon</div><div class="cal-day-lbl">Tue</div><div class="cal-day-lbl">Wed</div>
+                    <div class="cal-day-lbl">Thu</div><div class="cal-day-lbl">Fri</div><div class="cal-day-lbl">Sat</div><div class="cal-day-lbl">Sun</div>
+                </div>
+                <div id="calBody" class="cal-grid"></div>
+                <div class="cal-legend">
+                    <span><span class="dot green"></span> Profit day</span>
+                    <span><span class="dot red"></span> Loss day</span>
+                    <span><span class="dot gray"></span> No trades</span>
+                </div>
+                <!-- Daily Journal -->
+                <div class="card" style="margin-top:1.5rem">
+                    <h3><i class="fas fa-book"></i> Daily Journal</h3>
+                    <p class="sub-text">Write your market observations, lessons learned, or daily reflections.</p>
+                    <textarea id="journalText" rows="4" placeholder="What did you learn today?"></textarea>
+                    <button id="saveJournal" class="btn btn-primary btn-sm" style="margin-top:.5rem"><i class="fas fa-save"></i> Save Note</button>
+                    <div id="journalEntries" style="margin-top:1rem"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Nav -->
+        <nav class="bottom-nav">
+            <button class="bnav active" data-view="dashboard"><i class="fas fa-th-large"></i><span>Dashboard</span></button>
+            <button class="bnav" data-view="add"><i class="fas fa-plus-circle"></i><span>Log Trade</span></button>
+            <button class="bnav" data-view="history"><i class="fas fa-clock-rotate-left"></i><span>History</span></button>
+            <button class="bnav" data-view="analytics"><i class="fas fa-chart-bar"></i><span>Analytics</span></button>
+            <button class="bnav" data-view="calendar"><i class="fas fa-calendar-days"></i><span>Calendar</span></button>
+        </nav>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="overlay" style="display:none">
+        <div class="modal-box">
+            <div class="modal-header"><h2><i class="fas fa-pen"></i> Edit Trade</h2><button class="btn-x" id="closeEdit">&times;</button></div>
+            <form id="editForm">
+                <input type="hidden" id="e_id">
+                <div class="row-2">
+                    <div class="field"><label>Date</label><input type="datetime-local" id="e_date" required></div>
+                    <div class="field"><label>Asset</label><input type="text" id="e_asset" required></div>
+                </div>
+                <div class="row-3">
+                    <div class="field"><label>Side</label><select id="e_type"><option value="Buy">Buy</option><option value="Sell">Sell</option></select></div>
+                    <div class="field"><label>Strategy</label><select id="e_strat"><option>Breakout</option><option>Trend Continuation</option><option>S/R Bounce</option><option>Scalp</option><option>Mean Reversion</option><option>Gap Fill</option><option>News Trade</option><option>Other</option></select></div>
+                    <div class="field"><label>Timeframe</label><select id="e_tf"><option>1m</option><option>5m</option><option>15m</option><option>1h</option><option>4h</option><option>1D</option><option>1W</option></select></div>
+                </div>
+                <div class="row-3">
+                    <div class="field"><label>Entry</label><input type="number" id="e_entry" step="any" required></div>
+                    <div class="field"><label>SL</label><input type="number" id="e_sl" step="any"></div>
+                    <div class="field"><label>TP</label><input type="number" id="e_tp" step="any"></div>
+                </div>
+                <div class="row-3">
+                    <div class="field"><label>Exit</label><input type="number" id="e_exit" step="any" required></div>
+                    <div class="field"><label>Size</label><input type="number" id="e_size" step="any" required></div>
+                    <div class="field"><label>Risk%</label><input type="number" id="e_risk" step="0.1"></div>
+                </div>
+                <div class="field"><label>Notes</label><textarea id="e_notes" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
