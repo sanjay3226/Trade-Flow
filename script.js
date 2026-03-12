@@ -14,11 +14,34 @@ const CURRENCY_SYMBOLS = {
     MXN:'Mex$',AED:'د.إ',THB:'฿',TRY:'₺',PLN:'zł',BTC:'₿',ETH:'Ξ'
 };
 
+// ==================== FIREBASE CONFIG ====================
+const firebaseConfig = {
+    apiKey: "AIzaSyAncGKQZ0GTmCg-q5Ki483r9ggsbYBCYhs",
+    authDomain: "trade-flow-fcfbf.firebaseapp.com",
+    databaseURL: "https://trade-flow-fcfbf-default-rtdb.firebaseio.com",
+    projectId: "trade-flow-fcfbf",
+    storageBucket: "trade-flow-fcfbf.firebasestorage.app",
+    messagingSenderId: "177112382134",
+    appId: "1:177112382134:web:b20dc878e28668e80d0417",
+    measurementId: "G-C5M6MXSVLM"
+};
+
+// Initialize Firebase
+let db = null;
+let auth = null;
+
+if (window.firebase) {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+}
+
 let trades = [];
 let journal = {}; // { "YYYY-MM-DD": "Text note..." }
 let settings = { currency:'USD', balance:10000, theme:'dark', accent:'blue', sound:true };
 let charts = {};
 let currentDate = new Date(); // For calendar
+let currentUser = null;
 
 // ==================== AUDIO (Synth) ====================
 function playSound(type) {
@@ -66,8 +89,63 @@ const sym = () => CURRENCY_SYMBOLS[settings.currency] || settings.currency + ' '
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
-    loadData();
+    // Start Auth Flow immediately
+    initAppFlow();
+});
 
+function initAppFlow() {
+    // Hide identity sequence if it exists in HTML
+    const seqEl = document.getElementById('identity-sequence');
+    if (seqEl) seqEl.style.display = 'none';
+
+    if (!auth) {
+        // Fallback if Firebase not configured
+        console.warn("Firebase not initialized. Running in local mode.");
+        startLocalSession();
+        return;
+    }
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            currentUser = user;
+            // Hide login loading if visible
+            const loader = document.getElementById('auth-loading');
+            if (loader) loader.style.display = 'none';
+            loadDataFromCloud();
+        } else {
+            currentUser = null;
+            showLogin();
+        }
+    });
+}
+
+function showLogin() {
+    // Hide app, show auth screen
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('login-card').style.display = 'block';
+    
+    document.getElementById('google-login').onclick = () => {
+        const loader = document.getElementById('auth-loading');
+        if (loader) loader.style.display = 'block';
+        
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(err => {
+            console.error(err);
+            if (loader) loader.style.display = 'none';
+            toast("Login Failed", "error");
+        });
+    };
+}
+
+function startLocalSession() {
+    loadData();
+    proceedToApp();
+}
+
+function proceedToApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    
     if (!localStorage.getItem(SETTINGS_KEY)) {
         document.getElementById('onboarding').style.display = 'flex';
         document.getElementById('app').style.display = 'none';
@@ -96,7 +174,50 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     renderAll();
-});
+}
+
+async function loadDataFromCloud() {
+    if (!db || !currentUser) return;
+    
+    try {
+        const doc = await db.collection('users').doc(currentUser.uid).get();
+        if (doc.exists) {
+            const data = doc.data();
+            trades = data.trades || [];
+            settings = data.settings || { currency:'USD', balance:10000, theme:'dark', accent:'blue', sound:true };
+            journal = data.journal || {};
+            // Sync to local specifically for this session
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            localStorage.setItem(TRADES_KEY, JSON.stringify(trades));
+            localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
+        } else {
+            // NEW CLOUD USER - Fresh Start
+            trades = [];
+            settings = { currency:'USD', balance:10000, theme:'dark', accent:'blue', sound:true };
+            journal = {};
+            // Clear local storage so onboarding triggers
+            localStorage.removeItem(SETTINGS_KEY);
+            localStorage.removeItem(TRADES_KEY);
+            localStorage.removeItem(JOURNAL_KEY);
+        }
+    } catch (e) {
+        console.error("Cloud load error, falling back to local:", e);
+        loadData();
+    }
+    proceedToApp();
+}
+
+async function syncToCloud() {
+    if (!currentUser || !db) return;
+    try {
+        await db.collection('users').doc(currentUser.uid).set({
+            trades, settings, journal,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    } catch (e) {
+        console.error("Cloud sync error:", e);
+    }
+}
 
 // ==================== STORAGE ====================
 function loadData() {
@@ -104,20 +225,20 @@ function loadData() {
     try { journal = JSON.parse(localStorage.getItem(JOURNAL_KEY)) || {}; } catch { journal = {}; }
     try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)); if (s) settings = { ...settings, ...s }; } catch {}
 }
-function saveTrades() { localStorage.setItem(TRADES_KEY, JSON.stringify(trades)); }
-function saveSettings() { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
-function saveJournal() { localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal)); }
+function saveTrades() { localStorage.setItem(TRADES_KEY, JSON.stringify(trades)); syncToCloud(); }
+function saveSettings() { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); syncToCloud(); }
+function saveJournal() { localStorage.setItem(JOURNAL_KEY, JSON.stringify(journal)); syncToCloud(); }
 
 // ==================== THEME & ACCENT ====================
 function applyTheme() { document.documentElement.setAttribute('data-theme', settings.theme); }
 function applyAccent() { document.documentElement.setAttribute('data-accent', settings.accent); }
 
 // ==================== TOAST ====================
-function toast(msg) {
+function toast(msg, type = 'info') {
     const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
+    t.innerHTML = `<span>${msg}</span>`;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.classList.remove('show'), 3000);
 }
 
 // ==================== ONBOARDING ====================
@@ -130,7 +251,7 @@ function initOnboarding() {
         document.getElementById('onboarding').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         document.body.style.overflow = '';
-        toast('🚀 Journal initialized!');
+        toast('Journal Synchronized', 'success');
         renderAll();
     });
 }
@@ -194,6 +315,24 @@ function initSettings() {
 
     document.getElementById('closeSettings').addEventListener('click', closeAndSave);
     modal.addEventListener('click', e => { if (e.target === modal) closeAndSave(); });
+
+    // Logout Logic
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.onclick = () => {
+            if (confirm('Logout of your account? Your local cache will be cleared.')) {
+                if (auth) {
+                    auth.signOut().then(() => {
+                        // Clear local storage on logout for security/cleanliness
+                        localStorage.clear();
+                        location.reload();
+                    });
+                } else {
+                    location.reload();
+                }
+            }
+        };
+    }
 
     // Instants
     document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -385,14 +524,14 @@ function renderStats(sorted, netPnl) {
     const banner = document.getElementById('streakBanner');
     if (streakType === 'Win' && currentStreak >= 3) {
         banner.style.display = 'flex';
-        banner.innerHTML = `<span><i class="fas fa-fire streak-fire"></i> ${currentStreak} Win Streak! You're on fire! 🔥</span>`;
+        banner.innerHTML = `<span><i class="fas fa-fire streak-fire"></i> ${currentStreak} Win Streak! Mastery confirmed.</span>`;
         if (currentStreak > lastStreak && document.getElementById('v_dashboard').classList.contains('active')) {
             playSound('streak'); fireConfetti();
         }
     } else if (streakType === 'Loss' && currentStreak >= 3) {
         banner.style.display = 'flex';
         banner.style.background = 'linear-gradient(135deg, var(--red), #7f1d1d)';
-        banner.innerHTML = `<span><i class="fas fa-snowflake"></i> ${currentStreak} Loss Streak. Take a step back and breathe. 🧊</span>`;
+        banner.innerHTML = `<span><i class="fas fa-wind"></i> ${currentStreak} Loss Streak. Pause and recalibrate.</span>`;
     } else {
         banner.style.display = 'none';
     }
