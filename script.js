@@ -857,7 +857,7 @@ function renderJournal() {
 }
 
 
-// ==================== EXPORT (PDF & CSV) ====================
+// ==================== EXPORT (DETAILED PDF & CSV) ====================
 function initExport() {
     const modal = document.getElementById('exportModal');
     document.getElementById('exportBtn').addEventListener('click', () => modal.style.display = 'flex');
@@ -865,26 +865,143 @@ function initExport() {
     modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
 
     document.getElementById('exportPDF').addEventListener('click', () => {
-        const { jsPDF } = window.jspdf; const doc = new jsPDF(); const s = sym();
-        doc.setFontSize(18); doc.text('TradeFlow Pro — Trade Report', 14, 20);
-        doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
-        const rows = [...trades].sort((a,b) => new Date(b.date)-new Date(a.date)).map(t => [
-            new Date(t.date).toLocaleDateString(), t.asset, t.type, t.entry, t.exit, t.size, s + t.pnl.toFixed(2), t.rr.toFixed(2)
-        ]);
-        doc.autoTable({ startY:35, head: [['Date','Asset','Side','Entry','Exit','Size','P&L','R:R']], body: rows,
-            headStyles: { fillColor: [59, 130, 246] }, styles: { fontSize: 8 }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const s = sym();
+        const now = new Date();
+
+        // --- BRANDING & HEADER ---
+        // Blue header strip
+        doc.setFillColor(59, 130, 246);
+        doc.rect(0, 0, 210, 40, 'F');
+        
+        doc.setFontSize(26); doc.setTextColor(255, 255, 255);
+        doc.text('TradeFlow Pro', 14, 22);
+        doc.setFontSize(12); doc.text('Zen Analytics Report', 14, 32);
+        
+        doc.setFontSize(9); doc.setTextColor(200, 220, 255);
+        doc.text(`ID: ${currentUser?.email || 'Local User'}`, 150, 20);
+        doc.text(`Exported: ${now.toLocaleString()}`, 150, 26);
+
+        // --- PERFORMANCE CARDS ---
+        const total = trades.length;
+        const wins = trades.filter(t => t.result === 'Win').length;
+        const wr = total > 0 ? (wins / total * 100).toFixed(1) : 0;
+        const netPnl = trades.reduce((sum, t) => sum + t.pnl, 0);
+        const winSum = trades.filter(t => t.pnl > 0).reduce((sum, t) => sum + t.pnl, 0);
+        const lossSum = Math.abs(trades.filter(t => t.pnl < 0).reduce((sum, t) => sum + t.pnl, 0));
+        const pf = lossSum > 0 ? (winSum / lossSum).toFixed(2) : 'Inf';
+
+        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(14); doc.text('Market Intelligence Summary', 14, 55);
+
+        // Grid-like summary
+        doc.autoTable({
+            startY: 60,
+            head: [['Statistic', 'Value', 'Context']],
+            body: [
+                ['Total Trades Executed', total, 'Market Presence'],
+                ['Strategic Win Rate', wr + '%', wins + ' Positive Outcomes'],
+                ['Cumulative Net P&L', s + netPnl.toFixed(2), netPnl >= 0 ? 'Profitable' : 'Drawdown'],
+                ['Profit Factor', pf, 'Efficiency Ratio']
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: [71, 85, 105], fontSize: 10 },
+            styles: { fontSize: 10, cellPadding: 5 }
         });
-        doc.save(`TradeFlow_Report.pdf`);
-        modal.style.display = 'none'; toast('📄 PDF exported');
+
+        // --- STRATEGY PERFORMANCE ---
+        const strats = {};
+        trades.forEach(t => { 
+            if (!strats[t.strategy]) strats[t.strategy] = { count: 0, pnl: 0, w: 0 }; 
+            strats[t.strategy].count++; 
+            strats[t.strategy].pnl += t.pnl; 
+            if(t.result==='Win') strats[t.strategy].w++;
+        });
+        const stratBody = Object.entries(strats).map(([n, v]) => [
+            n, v.count, (v.w/v.count*100).toFixed(0)+'%', s + v.pnl.toFixed(2)
+        ]);
+
+        doc.setFontSize(14); doc.text('Strategy Matrix', 14, doc.lastAutoTable.finalY + 15);
+        doc.autoTable({
+            startY: doc.lastAutoTable.finalY + 20,
+            head: [['Strategy Model', 'Volume', 'Success Rate', 'Asset Yield']],
+            body: stratBody,
+            theme: 'striped',
+            headStyles: { fillColor: [59, 130, 246] },
+            styles: { fontSize: 9 }
+        });
+
+        // --- RESTRAINT & BEHAVIORAL ANALYSIS ---
+        const mTags = ['FOMO', 'Revenge Trade', 'Overtrading', 'Early Exit', 'Late Entry', 'News Trade'];
+        const mStats = {};
+        mTags.forEach(t => mStats[t] = { count: 0, pnl: 0 });
+        trades.forEach(t => { if (t.tags) t.tags.forEach(tag => { if (mStats[tag]) { mStats[tag].count++; mStats[tag].pnl += t.pnl; } }); });
+        const mistakeBody = Object.entries(mStats).filter(([,v]) => v.count > 0).map(([n,v]) => [
+            n, v.count, s + v.pnl.toFixed(2)
+        ]);
+
+        if (mistakeBody.length > 0) {
+            doc.setFontSize(14); doc.text('Behavioral Drag (Negative Impact)', 14, doc.lastAutoTable.finalY + 15);
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 20,
+                head: [['Behavioral Tag', 'Occurrences', 'P&L Impact']],
+                body: mistakeBody,
+                theme: 'striped',
+                headStyles: { fillColor: [251, 113, 133] },
+                styles: { fontSize: 9 }
+            });
+        }
+
+        // --- FOOTER PER PAGE ---
+        const pageCount = doc.internal.getNumberOfPages();
+        for(let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8); doc.setTextColor(150);
+            doc.text(`TradeFlow Pro Zen Report — Generated by AI — Page ${i} of ${pageCount}`, 105, 290, {align: 'center'});
+        }
+
+        doc.save(`TradeFlow_Zen_Report_${now.toISOString().slice(0,10)}.pdf`);
+        modal.style.display = 'none'; 
+        toast('Zen Report Synchronized', 'success');
     });
 
     document.getElementById('exportCSV').addEventListener('click', () => {
-        const headers = ['Date','Asset','Type','Entry','Exit','Size','P&L','R:R','Strategy','Emotion','Tags','Notes'];
-        const rows = trades.map(t => [t.date, t.asset, t.type, t.entry, t.exit, t.size, t.pnl.toFixed(2), t.rr.toFixed(2), t.strategy, t.emotion, (t.tags||[]).join(';'), '"' + (t.notes||'').replace(/"/g,'""') + '"']);
-        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `TradeFlow.csv`;
-        a.click(); modal.style.display = 'none'; toast('📊 CSV exported');
+        // Prepare Summary Stats
+        const total = trades.length;
+        const wins = trades.filter(t => t.result === 'Win').length;
+        const wr = total > 0 ? (wins / total * 100).toFixed(1) : 0;
+        const netPnl = trades.reduce((sum, t) => sum + t.pnl, 0);
+
+        const summaryRows = [
+            ['REPORT SUMMARY'],
+            ['Total Trades', total],
+            ['Win Rate', wr + '%'],
+            ['Net P&L', netPnl.toFixed(2)],
+            [],
+            ['TRADE DATA']
+        ];
+
+        const headers = ['Date', 'Asset', 'Type', 'Entry', 'Exit', 'Size', 'P&L', 'R:R', 'Strategy', 'Emotion', 'Tags', 'Notes'];
+        const dataRows = trades.map(t => [
+            t.date, t.asset, t.type, t.entry, t.exit, t.size, t.pnl.toFixed(2), t.rr.toFixed(2), 
+            t.strategy, t.emotion || 'None', (t.tags || []).join('; '), 
+            '"' + (t.notes || '').replace(/"/g, '""') + '"'
+        ]);
+
+        const fullContent = [
+            ...summaryRows.map(r => r.join(',')),
+            headers.join(','),
+            ...dataRows.map(r => r.join(','))
+        ].join('\n');
+
+        const blob = new Blob([fullContent], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `TradeFlow_Archive_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        modal.style.display = 'none';
+        toast('CSV Archive Exported', 'success');
     });
 }
 
